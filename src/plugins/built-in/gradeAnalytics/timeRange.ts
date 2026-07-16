@@ -1,9 +1,17 @@
 import type { Assessment } from "./types";
 
-export type TimeRange = "all" | "365d" | "90d" | "30d" | "7d";
+export type TimeRange = 
+  | "all"
+  | "year"
+  | "month" 
+  | "365d" 
+  | "90d" 
+  | "30d" 
+  | "7d";
 
 export const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "all", label: "All time" },
+  { value: "year", label: "This year" },
   { value: "365d", label: "Last 12 months" },
   { value: "90d", label: "Last 3 months" },
   { value: "30d", label: "Last 30 days" },
@@ -15,15 +23,20 @@ export function getTimeRangeLabel(timeRange: TimeRange): string {
 }
 
 export function getTimeRangeCutoff(timeRange: TimeRange): Date | null {
-  if (timeRange === "all") return null;
-  const referenceDate = new Date();
-  let daysToSubtract = 90;
-  if (timeRange === "30d") daysToSubtract = 30;
-  else if (timeRange === "7d") daysToSubtract = 7;
-  else if (timeRange === "365d") daysToSubtract = 365;
-  const cutoff = new Date(referenceDate);
-  cutoff.setDate(cutoff.getDate() - daysToSubtract);
+  let daysToSubtract = 0;
+  const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
+  switch (timeRange) {
+    case "all": return null;
+    case "year": 
+      cutoff.setMonth(0, 1);
+      return cutoff;
+    case "365d": daysToSubtract = 365; break;
+    case "90d": daysToSubtract = 90; break;
+    case "30d": daysToSubtract = 30; break;
+    case "7d": daysToSubtract = 7; break;
+  }
+  cutoff.setDate(cutoff.getDate() - daysToSubtract);
   return cutoff;
 }
 
@@ -127,7 +140,11 @@ export function buildGradeTrendChart(
     return { points: [], series: [], accentColor };
   }
 
-  const useMonthlyGrouping = timeRange === "365d" || timeRange === "all";
+  const useMonthlyGrouping =
+    timeRange === "all" ||
+    timeRange === "365d" ||
+    timeRange === "year";
+  
   const cutoff = getTimeRangeCutoff(timeRange);
 
   const overallBuckets = new Map<string, number[]>();
@@ -137,9 +154,10 @@ export function buildGradeTrendChart(
 
   for (const assessment of graded) {
     const grade = assessment.finalGrade!;
+    
+    const dueDate = new Date(assessment.due);
+    if (cutoff && dueDate < cutoff) continue;
     const periodKey = periodKeyForAssessment(assessment, useMonthlyGrouping);
-    const periodDateValue = periodDate(periodKey, useMonthlyGrouping);
-    if (cutoff && periodDateValue < cutoff) continue;
 
     if (!overallBuckets.has(periodKey)) overallBuckets.set(periodKey, []);
     overallBuckets.get(periodKey)!.push(grade);
