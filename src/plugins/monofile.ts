@@ -26,7 +26,6 @@ import {
   updateEngageHomeMenuActive,
 } from "@/seqta/utils/Loaders/LoadEngageHomePage";
 import { loadHomePage } from "@/seqta/utils/Loaders/LoadHomePage";
-import { loadAnalyticsPage } from "@/plugins/built-in/gradeAnalytics/loadAnalyticsPage";
 import { runStartupPopupQueue } from "@/seqta/utils/Openers/StartupPopupQueue";
 
 import { updateTimetableTimes } from "@/seqta/utils/updateTimetableTimes";
@@ -36,6 +35,7 @@ import { observeMenuItemPosition } from "@/seqta/utils/sidebarMenuIcons";
 
 // Icons and fonts
 import IconFamily from "@/resources/fonts/IconFamily.woff";
+import { resolveExtensionAssetUrl } from "@/lib/extensionAssetUrl";
 
 // Stylesheets
 import iframeCSS from "@/css/iframe.scss?raw";
@@ -107,7 +107,7 @@ export async function finishLoad() {
 }
 
 export function GetCSSElement(file: string) {
-  const cssFile = browser.runtime.getURL(file);
+  const cssFile = resolveExtensionAssetUrl(file);
   const fileref = document.createElement("link");
   fileref.setAttribute("rel", "stylesheet");
   fileref.setAttribute("type", "text/css");
@@ -337,7 +337,11 @@ async function handleSublink(sublink: string | undefined): Promise<void> {
       break;
     case "analytics":
       console.info("[BetterSEQTA+] Started Init (Analytics)");
-      if (settingsState.onoff) void loadAnalyticsPage();
+      if (settingsState.onoff) {
+        void import("@/plugins/built-in/gradeAnalytics/loadAnalyticsPage").then(
+          (m) => m.loadAnalyticsPage(),
+        );
+      }
       finishLoad();
       break;
     case undefined:
@@ -488,25 +492,37 @@ async function handleReports(node: Element): Promise<void> {
   }
 }
 
-function CheckNoticeTextColour(notice: any) {
-  eventManager.register(
-    "noticeAdded",
-    {
-      elementType: "div",
-      className: "notice",
-      parentElement: notice,
-    },
-    (node) => {
-      var hex = (node as HTMLElement).style.cssText.split(" ")[1];
-      if (hex) {
-        const hex1 = hex.slice(0, -1);
-        var threshold = GetThresholdOfColor(hex1);
-        if (settingsState.DarkMode && threshold < 100) {
-          (node as HTMLElement).style.cssText = "--color: undefined;";
+function CheckNoticeTextColour(notice: Element) {
+  const adjustNoticeColor = (node: Element) => {
+    const hex = (node as HTMLElement).style.cssText.split(" ")[1];
+    if (hex) {
+      const hex1 = hex.slice(0, -1);
+      const threshold = GetThresholdOfColor(hex1);
+      if (settingsState.DarkMode && threshold < 100) {
+        (node as HTMLElement).style.cssText = "--color: undefined;";
+      }
+    }
+  };
+
+  for (const node of notice.querySelectorAll("div.notice")) {
+    adjustNoticeColor(node);
+  }
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const added of mutation.addedNodes) {
+        if (!(added instanceof Element)) continue;
+        if (added.matches("div.notice")) {
+          adjustNoticeColor(added);
+        }
+        for (const node of added.querySelectorAll("div.notice")) {
+          adjustNoticeColor(node);
         }
       }
-    },
-  );
+    }
+  });
+
+  observer.observe(notice, { childList: true, subtree: true });
 }
 
 function watchForEngageLogin() {
@@ -799,7 +815,7 @@ function InjectCustomIcons() {
   style.innerHTML = `
     @font-face {
       font-family: 'IconFamily';
-      src: url('${browser.runtime.getURL(IconFamily)}') format('woff');
+      src: url('${resolveExtensionAssetUrl(IconFamily)}') format('woff');
       font-weight: normal;
       font-style: normal;
     }`;

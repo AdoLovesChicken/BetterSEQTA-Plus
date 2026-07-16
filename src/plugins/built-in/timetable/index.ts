@@ -2,6 +2,7 @@ import { settingsState } from "@/seqta/utils/listeners/SettingsState";
 import type { Plugin } from "../../core/types";
 import { convertTo12HourFormat } from "@/seqta/utils/convertTo12HourFormat";
 import { waitForElm } from "@/seqta/utils/waitForElm";
+import { mountGoogleCalendarButton, unmountGoogleCalendarButton } from "./calendarSyncUi";
 
 const timetablePlugin: Plugin<{}, {}> = {
   id: "timetable",
@@ -26,6 +27,7 @@ const timetablePlugin: Plugin<{}, {}> = {
         const hideControls = document.querySelector(".timetable-hide-controls");
         if (hideControls) hideControls.remove();
 
+        unmountGoogleCalendarButton();
         resetTimetableStyles();
       }
     };
@@ -81,9 +83,12 @@ async function handleTimetable(): Promise<void> {
 
   handleTimetableZoom();
   handleTimetableAssessmentHide();
+  void mountGoogleCalendarButton();
 }
 
 function handleTimetableZoom(): void {
+  if (document.querySelector(".timetable-zoom-controls")) return;
+
   console.log("Initializing timetable zoom controls");
 
   // Create zoom controls
@@ -130,6 +135,8 @@ function handleTimetableZoom(): void {
 }
 
 function handleTimetableAssessmentHide(): void {
+  if (document.querySelector(".timetable-hide-controls")) return;
+
   const hideControls = document.createElement("div");
   hideControls.className = "timetable-hide-controls";
 
