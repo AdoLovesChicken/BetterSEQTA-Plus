@@ -1,8 +1,6 @@
 import MenuitemSVGKey from "@/seqta/content/MenuItemSVGKey.json";
-import {
-  ChangeMenuItemPositions,
-  MenuOptionsOpen,
-} from "@/seqta/utils/Openers/OpenMenuOptions";
+import { ChangeMenuItemPositions } from "@/seqta/utils/Openers/menuOrder";
+import { isMenuOptionsOpen } from "@/seqta/utils/Openers/menuOptionsState";
 import { settingsState } from "@/seqta/utils/listeners/SettingsState";
 import stringToHTML from "@/seqta/utils/stringToHTML";
 import { waitForEngageMenuList } from "@/seqta/utils/waitForEngageMenuList";
@@ -65,7 +63,7 @@ export function replaceMenuSVG(element: HTMLElement, svg: string) {
 }
 
 export function processMenuItemNode(node: HTMLElement) {
-  if (!isTopLevelSidebarItem(node) || MenuOptionsOpen) return;
+  if (!isTopLevelSidebarItem(node) || isMenuOptionsOpen()) return;
 
   const key = node.dataset.key as keyof typeof MenuitemSVGKey | undefined;
   if (key && MenuitemSVGKey[key]) {
@@ -77,7 +75,7 @@ export function processMenuItemNode(node: HTMLElement) {
 }
 
 function processTopLevelMenuItems(reorder = !isSeqtaEngageExperience()) {
-  if (MenuOptionsOpen) return;
+  if (isMenuOptionsOpen()) return;
 
   const topList = getTopLevelMenuList();
   if (!topList) return;
@@ -135,6 +133,7 @@ export async function observeMenuItemPosition() {
   eventManager.register(
     "menuList",
     {
+      selector: "li.item, section.item",
       parentElement: document.querySelector("#menu")!.firstChild as Element,
     },
     (element: Element) => {
@@ -143,7 +142,7 @@ export async function observeMenuItemPosition() {
       if (!isTopLevelSidebarItem(node)) return;
       if ((element as any)[processedSymbol]) return;
 
-      if (!MenuOptionsOpen) {
+      if (!isMenuOptionsOpen()) {
         processMenuItemNode(node);
         ChangeMenuItemPositions(settingsState.menuorder);
         (element as any)[processedSymbol] = true;

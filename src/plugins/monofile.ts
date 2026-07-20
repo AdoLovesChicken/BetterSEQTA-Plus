@@ -11,6 +11,7 @@ import { MessageHandler } from "@/seqta/utils/listeners/MessageListener";
 import { settingsState } from "@/seqta/utils/listeners/SettingsState";
 import { StorageChangeHandler } from "@/seqta/utils/listeners/StorageChanges";
 import { eventManager } from "@/seqta/utils/listeners/EventManager";
+import debounce from "@/seqta/utils/debounce";
 
 // UI and theme management
 import { isSeqtaEngageExperience } from "@/seqta/utils/isSeqtaEngage";
@@ -18,6 +19,7 @@ import RegisterClickListeners from "@/seqta/utils/listeners/ClickListeners";
 import { AddBetterSEQTAElements } from "@/seqta/ui/AddBetterSEQTAElements";
 import { updateAllColors } from "@/seqta/ui/colors/Manager";
 import { applySelectedFont } from "@/seqta/ui/fonts/Manager";
+import { verboseInfo, verboseLog } from "@/utils/verboseLog";
 import loading from "@/seqta/ui/Loading";
 import { SendNewsPage } from "@/seqta/utils/SendNewsPage";
 import { getEngageRoutePage } from "@/seqta/utils/engageRoute";
@@ -28,7 +30,11 @@ import {
 import { loadHomePage } from "@/seqta/utils/Loaders/LoadHomePage";
 import { runStartupPopupQueue } from "@/seqta/utils/Openers/StartupPopupQueue";
 
-import { updateTimetableTimes } from "@/seqta/utils/updateTimetableTimes";
+import {
+  syncTimetableUrlMonitoring,
+  updateTimetableTimes,
+} from "@/seqta/utils/updateTimetableTimes";
+import { attachTimetableColorisRecovery } from "@/seqta/utils/patchSeqtaMenuUpdateColours";
 
 // JSON content
 import { observeMenuItemPosition } from "@/seqta/utils/sidebarMenuIcons";
@@ -40,29 +46,7 @@ import { resolveExtensionAssetUrl } from "@/lib/extensionAssetUrl";
 // Stylesheets
 import iframeCSS from "@/css/iframe.scss?raw";
 
-function SetDisplayNone(ElementName: string) {
-  return `li[data-key=${ElementName}]{display:var(--menuHidden) !important; transition: 1s;}`;
-}
-
-async function HideMenuItems(): Promise<void> {
-  try {
-    let stylesheetInnerText: string = "";
-    for (const [menuItem, { toggle }] of Object.entries(
-      settingsState.menuitems,
-    )) {
-      if (!toggle) {
-        stylesheetInnerText += SetDisplayNone(menuItem);
-        console.info(`[BetterSEQTA+] Hiding ${menuItem} menu item`);
-      }
-    }
-
-    const menuItemStyle: HTMLStyleElement = document.createElement("style");
-    menuItemStyle.innerText = stylesheetInnerText;
-    document.head.appendChild(menuItemStyle);
-  } catch (error) {
-    console.error("[BetterSEQTA+] An error occurred:", error);
-  }
-}
+import { applyMenuItemVisibility } from "@/seqta/utils/menuItemVisibility";
 
 export function hideSideBar() {
   const sidebar = document.getElementById("menu"); // The sidebar element to be closed
@@ -143,7 +127,7 @@ async function updateIframesWithDarkMode(): Promise<void> {
   eventManager.register(
     "iframeAdded",
     {
-      elementType: "iframe",
+      selector: "iframe",
       customCheck: (element: Element) =>
         !element.classList.contains("iframecss"),
     },
@@ -181,8 +165,8 @@ function applyDarkModeToIframe(
   }
 
   const head = iframeDocument.head;
-  if (head && !head.innerHTML.includes("iframecss")) {
-    head.innerHTML += cssLink.outerHTML;
+  if (head && !head.querySelector(".iframecss")) {
+    head.appendChild(cssLink.cloneNode(true));
   }
 }
 
@@ -204,6 +188,9 @@ function SortMessagePageItems(messagesParentElement: any) {
 
 async function LoadPageElements(): Promise<void> {
   await AddBetterSEQTAElements();
+  void import("@/seqta/ui/sidebar/mountCustomSidebar").then((mod) => {
+    void mod.mountCustomSidebar();
+  });
   const sublink: string | undefined = getEngageRoutePage();
 
   if (isSeqtaEngageExperience() && !engageHashListenerAttached) {
@@ -217,70 +204,26 @@ async function LoadPageElements(): Promise<void> {
     });
   }
 
-  eventManager.register(
-    "messagesAdded",
-    {
-      elementType: "div",
-      className: "messages",
-    },
-    handleMessages,
-  );
+  eventManager.register("messagesAdded", { selector: "div.messages" }, handleMessages);
 
-  eventManager.register(
-    "noticesAdded",
-    {
-      elementType: "div",
-      className: "notices",
-    },
-    CheckNoticeTextColour,
-  );
+  eventManager.register("noticesAdded", { selector: "div.notices" }, CheckNoticeTextColour);
 
-  eventManager.register(
-    "dashboardAdded",
-    {
-      elementType: "div",
-      className: "dashboard",
-    },
-    handleDashboard,
-  );
+  eventManager.register("dashboardAdded", { selector: "div.dashboard" }, handleDashboard);
 
-  eventManager.register(
-    "documentsAdded",
-    {
-      elementType: "div",
-      className: "documents",
-    },
-    handleDocuments,
-  );
+  eventManager.register("documentsAdded", { selector: "div.documents" }, handleDocuments);
 
-  eventManager.register(
-    "reportsAdded",
-    {
-      elementType: "div",
-      className: "reports",
-    },
-    handleReports,
-  );
+  eventManager.register("reportsAdded", { selector: "div.reports" }, handleReports);
 
   eventManager.register(
     "timetableAdded",
-    {
-      elementType: "div",
-      className: "timetablepage",
-    },
+    { selector: "div.timetablepage" },
     async () => {
+      attachTimetableColorisRecovery();
       await updateTimetableTimes();
     },
   );
 
-  eventManager.register(
-    "noticesAdded",
-    {
-      elementType: "div",
-      className: "notice",
-    },
-    handleNotices,
-  );
+  eventManager.register("noticesAdded", { selector: "div.notice" }, handleNotices);
 
   RegisterClickListeners();
 
@@ -320,7 +263,7 @@ async function handleSublink(sublink: string | undefined): Promise<void> {
         break;
       case "home":
         window.location.replace(`${location.origin}/#?page=/home`);
-        console.info("[BetterSEQTA+] Started Init (SEQTA Engage home)");
+        verboseInfo("[BetterSEQTA+] Started Init (SEQTA Engage home)");
         if (settingsState.onoff) void loadEngageHomePage();
         finishLoad();
         break;
@@ -336,7 +279,7 @@ async function handleSublink(sublink: string | undefined): Promise<void> {
       await handleNewsPage();
       break;
     case "analytics":
-      console.info("[BetterSEQTA+] Started Init (Analytics)");
+      verboseInfo("[BetterSEQTA+] Started Init (Analytics)");
       if (settingsState.onoff) {
         void import("@/plugins/built-in/gradeAnalytics/loadAnalyticsPage").then(
           (m) => m.loadAnalyticsPage(),
@@ -360,7 +303,7 @@ async function handleSublink(sublink: string | undefined): Promise<void> {
       break;
     case "home":
       window.location.replace(`${location.origin}/#?page=/home`);
-      console.info("[BetterSEQTA+] Started Init");
+      verboseInfo("[BetterSEQTA+] Started Init");
       if (settingsState.onoff) loadHomePage();
       finishLoad();
       break;
@@ -372,11 +315,18 @@ async function handleSublink(sublink: string | undefined): Promise<void> {
 }
 
 async function handleNewsPage(): Promise<void> {
-  console.info("[BetterSEQTA+] Started Init");
-  if (settingsState.onoff) {
-    SendNewsPage();
+  if (!settingsState.onoff) {
     finishLoad();
+    return;
   }
+
+  verboseInfo("[BetterSEQTA+] Started Init");
+  try {
+    await SendNewsPage();
+  } catch (error) {
+    console.error("[BetterSEQTA+] Failed to load news page:", error);
+  }
+  finishLoad();
 }
 
 async function handleDefault(): Promise<void> {
@@ -492,37 +442,42 @@ async function handleReports(node: Element): Promise<void> {
   }
 }
 
+const noticeContainers = new Set<Element>();
+let noticeColourObserver: MutationObserver | null = null;
+
+const adjustNoticeColor = (node: Element) => {
+  const hex = (node as HTMLElement).style.cssText.split(" ")[1];
+  if (!hex || !settingsState.DarkMode || GetThresholdOfColor(hex.slice(0, -1)) >= 100) return;
+  (node as HTMLElement).style.cssText = "--color: undefined;";
+};
+
+const scanNotices = (el: Element) => {
+  if (el.matches("div.notice")) adjustNoticeColor(el);
+  el.querySelectorAll("div.notice").forEach(adjustNoticeColor);
+};
+
+const scanAddedNotices = debounce((mutations: MutationRecord[]) => {
+  for (const m of mutations)
+    for (const node of m.addedNodes)
+      if (node instanceof Element) scanNotices(node);
+}, 50);
+
 function CheckNoticeTextColour(notice: Element) {
-  const adjustNoticeColor = (node: Element) => {
-    const hex = (node as HTMLElement).style.cssText.split(" ")[1];
-    if (hex) {
-      const hex1 = hex.slice(0, -1);
-      const threshold = GetThresholdOfColor(hex1);
-      if (settingsState.DarkMode && threshold < 100) {
-        (node as HTMLElement).style.cssText = "--color: undefined;";
-      }
-    }
-  };
-
-  for (const node of notice.querySelectorAll("div.notice")) {
-    adjustNoticeColor(node);
+  scanNotices(notice);
+  if (noticeContainers.has(notice)) return;
+  if (!noticeColourObserver) {
+    noticeColourObserver = new MutationObserver((mutations) => {
+      scanAddedNotices(mutations);
+      for (const m of mutations)
+        for (const node of m.removedNodes)
+          if (node instanceof Element && noticeContainers.has(node)) {
+            noticeColourObserver!.unobserve(node);
+            noticeContainers.delete(node);
+          }
+    });
   }
-
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const added of mutation.addedNodes) {
-        if (!(added instanceof Element)) continue;
-        if (added.matches("div.notice")) {
-          adjustNoticeColor(added);
-        }
-        for (const node of added.querySelectorAll("div.notice")) {
-          adjustNoticeColor(node);
-        }
-      }
-    }
-  });
-
-  observer.observe(notice, { childList: true, subtree: true });
+  noticeContainers.add(notice);
+  noticeColourObserver.observe(notice, { childList: true, subtree: true });
 }
 
 function watchForEngageLogin() {
@@ -690,12 +645,28 @@ export function showConflictPopup() {
 }
 
 export function init() {
+  const tryMountDisabledUi = async () => {
+    if (document.getElementById("AddedSettings")) return;
+
+    try {
+      await waitForElm("#content");
+    } catch {
+      try {
+        await waitForElm("#container");
+      } catch {
+        await waitForElm("body");
+      }
+    }
+
+    AppendElementsToDisabledPage();
+  };
+
   const handleDisabled = () => {
-    waitForElm(".code", true, 50).then(AppendElementsToDisabledPage);
+    void tryMountDisabledUi();
   };
 
   if (settingsState.onoff) {
-    console.info("[BetterSEQTA+] Enabled");
+    verboseInfo("[BetterSEQTA+] Enabled");
     if (settingsState.DarkMode) document.documentElement.classList.add("dark");
     if (settingsState.iconOnlySidebar) {
       if (document.body) {
@@ -708,6 +679,13 @@ export function init() {
     }
 
     document.querySelector(".legacy-root")?.classList.add("hidden");
+
+    // Hide native sidebar + mount Svelte replacement during the loading overlay.
+    document.documentElement.classList.add("bsplus-custom-sidebar-pending");
+    void import("@/seqta/ui/sidebar/mountCustomSidebar").then((mod) => {
+      mod.prepareCustomSidebarEarly();
+    });
+
     void observeMenuItemPosition();
 
     new StorageChangeHandler();
@@ -721,13 +699,15 @@ export function init() {
     });
     loading();
     InjectCustomIcons();
-    HideMenuItems();
+    applyMenuItemVisibility();
+    syncTimetableUrlMonitoring();
     tryLoad();
 
     // Auto-focus WISP direct online submission editor when pane opens
     eventManager.register(
       "wispassessmentAdded",
       {
+        selector: ".uiSlidePane, .wispassessment",
         customCheck: (el) =>
           el.classList.contains("wispassessment") ||
           el.querySelector(".wispassessment") !== null,
@@ -796,19 +776,19 @@ export function init() {
         ".outside-container .bottom-container",
       );
       if (legacyElement) {
-        console.log("Legacy extension detected");
+        verboseLog("Legacy extension detected");
         showConflictPopup();
       }
     }, 1000);
   } else {
     handleDisabled();
     InjectCustomIcons();
-    window.addEventListener("load", handleDisabled);
+    window.addEventListener("load", handleDisabled, { once: true });
   }
 }
 
 function InjectCustomIcons() {
-  console.info("[BetterSEQTA+] Injecting Icons");
+  verboseInfo("[BetterSEQTA+] Injecting Icons");
 
   const style = document.createElement("style");
   style.setAttribute("type", "text/css");
@@ -823,7 +803,9 @@ function InjectCustomIcons() {
 }
 
 export function AppendElementsToDisabledPage() {
-  console.info("[BetterSEQTA+] Appending elements to disabled page");
+  if (document.getElementById("AddedSettings")) return;
+
+  verboseInfo("[BetterSEQTA+] Appending elements to disabled page");
   AddBetterSEQTAElements();
 
   let settingsStyle = document.createElement("style");
@@ -838,7 +820,13 @@ export function AppendElementsToDisabledPage() {
     border-radius: 50%;
     margin: 7px !important;
     cursor: pointer;
-    color: white !important;
+    color: #38373d !important;
+    background: rgba(0, 0, 0, 0.08);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    visibility: visible !important;
+    z-index: 1000;
   }
   .addedButton svg {
     margin: 6px;

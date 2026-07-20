@@ -1,6 +1,7 @@
 import { defineLazyPlugin } from "../../core/dynamicLoader";
 import { defineSettings, numberSetting } from "../../core/settingsHelpers";
 import { isSeqtaEngageExperience } from "@/seqta/utils/isSeqtaEngage";
+import { injectAnalyticsMenuItem } from "./injectAnalyticsMenuItem";
 import styles from "./styles.css?inline";
 
 const settings = defineSettings({
@@ -13,6 +14,10 @@ const settings = defineSettings({
   }),
 });
 
+/**
+ * Shell loads immediately so the sidebar Analytics icon can mount.
+ * The page UI (`loadAnalyticsPage` / charts) stays in a separate lazy chunk.
+ */
 const gradeAnalyticsPluginLazy = defineLazyPlugin({
   id: "grade-analytics",
   name: "Grade Analytics",
@@ -20,19 +25,24 @@ const gradeAnalyticsPluginLazy = defineLazyPlugin({
     "Grade trends, distribution charts, and assessment history synced from SEQTA",
   version: "1.0.0",
   settings,
-  disableToggle: false,
+  disableToggle: true,
   defaultEnabled: true,
   styles,
+  // Kept for API compatibility; menu injection no longer waits on this chunk.
   loader: () => import("./core/index"),
 });
 
-const runGradeAnalytics = gradeAnalyticsPluginLazy.run!;
-
-gradeAnalyticsPluginLazy.run = async (api) => {
+gradeAnalyticsPluginLazy.run = async () => {
   if (isSeqtaEngageExperience()) {
     return () => {};
   }
-  return runGradeAnalytics(api);
+
+  // Eager: sidebar icon / native menu row only.
+  const cleanupMenu = await injectAnalyticsMenuItem();
+
+  return () => {
+    cleanupMenu();
+  };
 };
 
 export default gradeAnalyticsPluginLazy;

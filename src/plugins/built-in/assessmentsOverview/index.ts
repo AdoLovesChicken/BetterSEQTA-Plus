@@ -53,7 +53,7 @@ const assessmentsOverviewPlugin: Plugin<{}> = {
     "Adds an overview option to the assessments page that organizes assessments by status",
   version: "1.0.0",
   settings: {},
-  disableToggle: false,
+  disableToggle: true,
   styles,
 
   run: async () => {
@@ -66,11 +66,16 @@ const assessmentsOverviewPlugin: Plugin<{}> = {
     label.textContent = "Overview";
     gridItem.appendChild(label);
     menu.insertBefore(gridItem, menu.firstChild);
+    window.dispatchEvent(new CustomEvent("bsplus-native-menu-updated"));
 
     let loadRequestId = 0;
 
     const menuObserver = new MutationObserver(() => {
+      const before = menu.firstElementChild;
       ensureOverviewMenuPosition(menu, gridItem);
+      if (menu.firstElementChild !== before) {
+        window.dispatchEvent(new CustomEvent("bsplus-native-menu-updated"));
+      }
     });
     menuObserver.observe(menu, { childList: true });
 

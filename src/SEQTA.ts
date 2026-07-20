@@ -6,10 +6,12 @@ import documentLoadCSS from "@/css/documentload.scss?inline";
 import icon48 from "@/resources/icons/icon-48.png?base64";
 import browser from "webextension-polyfill";
 
-import { init as Monofile } from "@/plugins/monofile";
 import { main } from "@/seqta/main";
 import { delay } from "./seqta/utils/delay";
 import { initializeHideSensitiveToggle } from "@/seqta/utils/hideSensitiveToggle";
+import { installSeqtaMenuColourPatch } from "@/seqta/utils/patchSeqtaMenuUpdateColours";
+import { installThemeImagePagePatch } from "@/seqta/utils/patchThemeImagesPageContext";
+import { initVerboseLogging, verboseInfo } from "@/utils/verboseLog";
 
 function registerFetchSeqtaAppLinkListener() {
   browser.runtime.onMessage.addListener((request, _sender, sendResponse) => {
@@ -35,8 +37,6 @@ function registerFetchSeqtaAppLinkListener() {
   });
 }
 
-export let MenuOptionsOpen = false;
-
 var IsSEQTAPage = false;
 let hasSEQTAText = false;
 
@@ -46,6 +46,10 @@ if (document.childNodes[1]) {
     document.childNodes[1].textContent?.includes(
       "Copyright (c) SEQTA Software",
     ) ?? false;
+  if (hasSEQTAText) {
+    installSeqtaMenuColourPatch();
+    installThemeImagePagePatch();
+  }
   init();
 }
 
@@ -57,11 +61,7 @@ async function init() {
     !IsSEQTAPage
   ) {
     IsSEQTAPage = true;
-    console.info("[BetterSEQTA+] Verified SEQTA Page");
-
-    if (typeof window !== "undefined" && window === window.top) {
-      void browser.runtime.sendMessage({ type: "cloudSettingsPoll" }).catch(() => {});
-    }
+    verboseInfo("[BetterSEQTA+] Verified SEQTA Page");
 
     registerFetchSeqtaAppLinkListener();
 
@@ -96,6 +96,7 @@ async function init() {
 
     try {
       await initializeSettingsState();
+      initVerboseLogging();
 
       if (typeof settingsState.onoff === "undefined") {
         await browser.runtime.sendMessage({ type: "setDefaultStorage" });
@@ -104,10 +105,12 @@ async function init() {
       }
 
       await main();
+
+      const { init: Monofile } = await import("@/plugins/monofile");
       Monofile();
 
       if (settingsState.onoff) {
-        const { initializePlugins } = await import("@/plugins/runtime");
+        const { initializePlugins } = await import("@/plugins/index");
         await initializePlugins();
       }
 
@@ -115,7 +118,7 @@ async function init() {
         initializeHideSensitiveToggle();
       }
 
-      console.info(
+      verboseInfo(
         "[BetterSEQTA+] Successfully initialised BetterSEQTA+, starting to load assets.",
       );
     } catch (error) {

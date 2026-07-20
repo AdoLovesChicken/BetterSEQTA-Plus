@@ -34,7 +34,8 @@
   display: none;
 }
 
-button.uiButton.timetable-zoom.iconFamily,
+button.timetable-zoom.iconFamily,
+button.bsplus-timetable-control.iconFamily,
 .iconFamily {
   font-family: "IconFamily" !important;
 }
@@ -63,9 +64,13 @@ body {
 
 select {
   border-radius: 16px !important;
-  border: 1px solid color-mix(in srgb, var(--theme-offset-bg, var(--background-secondary)) 78%, transparent) !important;
-  background: color-mix(in srgb, var(--background-primary) 90%, transparent) !important;
+  border: 1px solid var(--theme-offset-bg, var(--theme-secondary, var(--background-secondary))) !important;
+  background: var(--theme-primary, var(--background-primary)) !important;
   color: var(--text-primary) !important;
+  padding: 0.5rem 1rem !important;
+  min-height: 2.5rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25 !important;
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -73,14 +78,14 @@ select {
 }
 
 select:hover {
-  background: color-mix(in srgb, var(--background-primary) 94%, var(--background-secondary) 6%) !important;
-  border-color: color-mix(in srgb, var(--theme-offset-bg, var(--background-secondary)) 92%, transparent) !important;
+  background: var(--theme-secondary, var(--background-secondary)) !important;
+  border-color: var(--theme-offset-bg, var(--theme-secondary, var(--background-secondary))) !important;
 }
 
 select:focus {
   outline: none !important;
-  background: color-mix(in srgb, var(--background-primary) 96%, var(--background-secondary) 4%) !important;
-  border-color: color-mix(in srgb, var(--text-primary) 18%, var(--theme-offset-bg, var(--background-secondary)) 82%) !important;
+  background: var(--theme-secondary, var(--background-secondary)) !important;
+  border-color: color-mix(in srgb, var(--text-primary) 18%, var(--theme-offset-bg, var(--theme-secondary, var(--background-secondary))) 82%) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent) !important;
 }
 
@@ -89,12 +94,12 @@ select[size="1"] {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  color-scheme: light;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23999'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E") !important;
   background-position: right 0.9rem center !important;
   background-repeat: no-repeat !important;
   background-size: 1rem !important;
   padding-right: 2.6rem !important;
-  color-scheme: light;
 }
 
 select::-ms-expand {
@@ -102,19 +107,19 @@ select::-ms-expand {
 }
 
 select option {
-  background: var(--background-primary) !important;
-  color: var(--text-primary) !important;
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.dark select option {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 .dark select:not([multiple]):not([size]),
 .dark select[size="1"] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23c9c9c9'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E") !important;
   color-scheme: dark;
-}
-
-.dark select option {
-  background: var(--background-primary) !important;
-  color: var(--text-primary) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23c9c9c9'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E") !important;
 }
 #container {
   background: var(--auto-background) !important;
@@ -212,6 +217,13 @@ select option {
 
 .modaliser-container {
   backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+/* Colour picker dialog teardown can leave an empty shell that blocks clicks */
+.modaliser-container:not(:has(.modaliser > *)) {
+  display: none !important;
+  visibility: hidden !important;
   pointer-events: none !important;
 }
 
@@ -331,12 +343,18 @@ select option {
 }
 
 .timetable-zoom,
-.timetable-hide {
+.timetable-hide,
+.bsplus-timetable-control {
   font-size: 14px !important;
   line-height: 1 !important;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 #main > .dashboard {
@@ -421,6 +439,7 @@ ul.magicDelete > li.deleting {
 .addedButton svg {
   margin: 6px;
   fill: var(--theme-primary);
+  color: var(--theme-primary);
 }
 #menu,
 .sub,
@@ -508,6 +527,54 @@ ul.magicDelete > li.deleting {
 #menu:has(> ul > li.hasChildren.active) > ul > li:not(.hasChildren.active) {
   pointer-events: none !important;
 }
+
+/* Edit Sidebar: every row + toggle must stay clickable (drill stack disables siblings). */
+#menu.bsplus-sidebar-edit-mode li.item,
+#menu.bsplus-sidebar-edit-mode section.item,
+#menu.bsplus-sidebar-edit-mode .bsplus-sidebar-offscreen,
+#menu.bsplus-sidebar-edit-mode .bsplus-sidebar-offscreen * {
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+#menu.bsplus-sidebar-edit-mode:has(> ul > li.hasChildren.active)
+  > ul
+  > li:not(.hasChildren.active) {
+  pointer-events: auto !important;
+}
+
+#menu.bsplus-sidebar-edit-mode > ul > .bsplus-sidebar-offscreen:not(.hasChildren.active),
+#menu.bsplus-sidebar-edit-mode .sub .bsplus-sidebar-offscreen:not(.hasChildren.active) {
+  position: relative !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  margin: inherit !important;
+  padding: inherit !important;
+  overflow: visible !important;
+  clip: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+#menu.bsplus-sidebar-edit-mode .item.draggable {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#menu.bsplus-sidebar-edit-mode .item.draggable > label {
+  flex: 1;
+  min-width: 0;
+}
+
+#menu.bsplus-sidebar-edit-mode .onoffswitch {
+  pointer-events: auto !important;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
 #menu section > label {
   align-items: center;
   box-sizing: border-box;
@@ -546,6 +613,154 @@ ul.magicDelete > li.deleting {
   color: var(--text-color);
   border-right: none;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hide native menu as soon as possible (during loading), before Svelte mounts.
+   Keep `#bsplus-sidebar-root` visible — themes target `#menu > ul > li.item` on it. */
+html.bsplus-custom-sidebar-pending #menu > ul:not(#bsplus-sidebar-root),
+html.bsplus-custom-sidebar-pending #menu > #userInfo,
+html.bsplus-custom-sidebar-pending #menu > .icon-cover,
+#menu.bsplus-custom-sidebar > ul:not(#bsplus-sidebar-root),
+#menu.bsplus-custom-sidebar > #userInfo,
+#menu.bsplus-custom-sidebar > .icon-cover {
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  clip: rect(0, 0, 0, 0) !important;
+}
+
+/* Custom Svelte sidebar: SEQTA-like `#menu > ul > li.item` / `.sub` for theme CSS. */
+#menu.bsplus-custom-sidebar {
+  /* SEQTA uses absolute top/bottom:0 — do not switch to relative or height collapses. */
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  /* No padding-top: logo `ul::before` + theme `.sub { top: 71.5px }` match native. */
+  box-sizing: border-box !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+
+  > #bsplus-sidebar-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    position: relative;
+  }
+
+  /* Theme drill panels assume static hasChildren + absolute .sub filling #menu. */
+  li.hasChildren {
+    position: static !important;
+  }
+
+  /*
+   * Native SEQTA leaves `li.hasChildren.active` on the hidden list after click-through.
+   * Global `#menu:has(> ul > li.hasChildren.active) > ul > li:not(.hasChildren.active)`
+   * then sets pointer-events:none on our custom root rows. Override that here; drill
+   * locking only follows the custom list's own active folder.
+   */
+  > #bsplus-sidebar-root > li.item {
+    pointer-events: auto !important;
+  }
+
+  /* Only lock siblings while a drill `.sub` is open — not when a folder is
+     merely route-highlighted with `.active` at the root list. */
+  &:has(> #bsplus-sidebar-root > li.hasChildren.active > .sub)
+    > #bsplus-sidebar-root
+    > li:not(.hasChildren.active),
+  &:has(> #bsplus-sidebar-root > li.hasChildren.active > .sub)
+    > #bsplus-sidebar-root
+    > li:not(.hasChildren.active)
+    * {
+    pointer-events: none !important;
+  }
+
+  > #bsplus-sidebar-root .sub {
+    pointer-events: none;
+  }
+
+  > #bsplus-sidebar-root li.hasChildren.active > .sub {
+    pointer-events: auto;
+    /* Let the #menu chrome (gradient / theme) show through — themes often paint
+       `.sub` with flat `--background-primary` which reads as a white slab. */
+    background: transparent !important;
+    background-image: none !important;
+    animation: bsplus-submenu-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  > #bsplus-sidebar-root li.hasChildren.active > .sub:has(.hasChildren.active) {
+    pointer-events: none !important;
+    animation: none;
+  }
+
+  > #bsplus-sidebar-root li.hasChildren.active .hasChildren.active > .sub {
+    pointer-events: auto !important;
+    background: transparent !important;
+    background-image: none !important;
+    animation: bsplus-submenu-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Keep folder + leaf rows on the same rhythm (themes often only style
+     `:not(.hasChildren)`, which left folders centred / differently spaced). */
+  > #bsplus-sidebar-root li.item {
+    width: auto !important;
+    max-width: none !important;
+    margin: 2px 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Folder label stays in flow so sidebar-animation translateX can run.
+     Visually covered by the absolute `.sub` panel. */
+  > #bsplus-sidebar-root > li.hasChildren.active > label {
+    pointer-events: none !important;
+  }
+
+  #bsplus-sidebar-root .sub .back {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px 8px;
+    cursor: pointer;
+    font-weight: 700;
+    color: inherit;
+  }
+
+  #bsplus-sidebar-root .sub .back:hover {
+    opacity: 0.9;
+  }
+
+  #bsplus-sidebar-root .sub .backLabel {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  #bsplus-sidebar-root .sub > ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 16px;
+  }
+}
+
+@keyframes bsplus-submenu-enter {
+  from {
+    opacity: 0.35;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 #menu li > label > svg,
 #menu section > label > svg {
@@ -796,6 +1011,11 @@ ol:has([class*="MessageList__avatar___"] svg) {
 .quickbar .actions [title="Choose a colour"] > svg {
   scale: 0.9;
 }
+
+.quickbar .actions .timetable-edit-quickbar-btn > svg {
+  scale: 0.9;
+  padding-top: 1px;
+}
 .quickbar[data-yiq="light"] .actions {
   color: white !important;
 }
@@ -1026,7 +1246,13 @@ div > ol:has(.uiFileHandlerWrapper) {
   min-height: 128px !important;
 }
 body.student #menu > ul::before {
+  content: "";
+  display: block;
+  width: 100%;
   background-image: var(--betterseqta-logo) !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: auto 48px;
   position: -webkit-sticky;
   position: sticky;
   top: 0;
@@ -2660,9 +2886,22 @@ body {
 .days {
   width: 100%;
 }
-.modaliser {
-  display: none;
+/* Do not hide .modaliser globally — SEQTA Modaliser relies on transitionend to
+   dispose; display:none prevents that and leaves empty shells that block clicks. */
+.modaliser-container:not(.visible) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.modaliser-container.visible .modaliser {
   background: var(--better-main);
+}
+
+/* ColourChooser teardown can leave a full-screen uiSlidePane that blocks entry clicks */
+.uiSlidePane:not(.shown):has(.pane.colourChooser) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 [class*="MessageList__unread___"] {
@@ -2742,45 +2981,27 @@ body {
 .defaultWelcomeWrapper {
   background: unset !important;
 }
-.clr-swatches button::after,
-.clr-dark .clr-preview::after,
-.clr-field button::after {
-  opacity: unset;
-  padding-top: unset;
-  -webkit-transform: unset;
-  transform: unset;
-  -webkit-transform-origin: unset;
-  transform-origin: unset;
-  visibility: unset;
-  -webkit-animation-name: unset !important;
-  animation-name: unset !important;
-  background-color: currentColor !important;
-}
-.clr-swatches button {
-  align-items: unset;
-  display: block;
-  padding: unset;
-  transition: none;
-}
-.clr-clear {
-  display: none !important;
-}
-.clr-preview::before,
-.clr-preview::after {
-  visibility: unset;
-  -webkit-transform-origin: unset;
-  transform-origin: unset;
-  -webkit-transform: unset;
-  transform: unset;
-  padding-top: unset;
-  opacity: unset;
-}
+
+/* Coloris (timetable subject colours): cosmetic only — do not unset
+   transforms/animations on ::after (breaks picker reopen). */
 #clr-color-preview {
   margin: 15px 0 20px 20px;
   border: 0;
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
+}
+
+.clr-swatches button {
+  border-radius: 4px;
+}
+
+/* Never let a closed Coloris picker intercept timetable clicks */
+body:not(.clr-open) .clr-picker,
+.clr-picker:not(.clr-open) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 .dark

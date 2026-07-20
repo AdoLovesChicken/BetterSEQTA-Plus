@@ -10,10 +10,11 @@
   import Calculator from './Calculator.svelte';
   import { actionMap } from '../indexing/actions';
   import type { IndexItem } from '../indexing/types';
-  import debounce from 'lodash/debounce';
+  import debounce from '@/seqta/utils/debounce';
   import { renderComponentMap } from '../indexing/renderComponents';
   import HighlightedText from '../utils/HighlightedText.svelte';
   import { matchesHotkey } from '../utils/hotkeyUtils';
+  import { warmUpVectorSearchOnInteraction } from '../search/vector/vectorSearch';
   import browser from 'webextension-polyfill';
 
   const { 
@@ -31,12 +32,6 @@
   
   const dynamicIdToItemMap = $state(new Map<string, IndexItem>());
   const commandIdToItemMap = $state(new Map<string, StaticCommandItem>());
-
-  let isIndexing = $state(false);
-  let completedJobs = $state(0);
-  let totalJobs = $state(0);
-  let indexingStatus = $state<string | null>(null);
-  let indexingDetail = $state<string | null>(null);
 
   let commandPalleteOpen = $state(false);
   let searchTerm = $state('');
@@ -99,6 +94,7 @@
     keydownHandler = (e: KeyboardEvent) => {
       if (matchesHotkey(e, currentSearchHotkey)) {
         e.preventDefault();
+        warmUpVectorSearchOnInteraction();
         commandPalleteOpen = true;
         tick().then(() => searchbar?.focus());
       }
@@ -118,17 +114,6 @@
   });
 
   onMount(() => {
-    const progressHandler = (event: CustomEvent) => {
-      const { completed, total, indexing, status, detail } = event.detail;
-      completedJobs = completed;
-      totalJobs = total;
-      isIndexing = indexing;
-      indexingStatus = status || null;
-      indexingDetail = detail || null;
-    };
-
-    window.addEventListener('indexing-progress', progressHandler as EventListener);
-    
     const itemsUpdatedHandler = (event: Event) => {
       const detail = (event as CustomEvent<DynamicItemsUpdatedDetail>).detail;
 
@@ -163,11 +148,11 @@
     
     // @ts-ignore - Intentionally adding to window
     window.setCommandPalleteOpen = (open: boolean) => {
+      if (open) warmUpVectorSearchOnInteraction();
       commandPalleteOpen = open;
     };
 
     return () => {
-      window.removeEventListener('indexing-progress', progressHandler as EventListener);
       window.removeEventListener('dynamic-items-updated', itemsUpdatedHandler);
     };
   });
@@ -183,8 +168,6 @@
     
     dynamicItems.forEach(item => dynamicIdToItemMap.set(item.id, item));
     commands.forEach(item => commandIdToItemMap.set(item.id, item));
-    
-    console.debug(`[Global Search] Indexed ${commands.length} command items and ${dynamicItems.length} dynamic items.`);
   }
 
   const performSearch = async () => {
