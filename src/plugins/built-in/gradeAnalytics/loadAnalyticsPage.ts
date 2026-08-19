@@ -1,6 +1,7 @@
 import { settingsState } from "@/seqta/utils/listeners/SettingsState";
 import { waitForElm } from "@/seqta/utils/waitForElm";
 import { renderAnalyticsPage } from "./ui";
+import { updateAllColors } from "@/seqta/ui/colors/Manager";
 
 let loadInFlight: Promise<void> | null = null;
 
@@ -56,4 +57,6 @@ async function loadAnalyticsPageInner(): Promise<void> {
   }
 
   renderAnalyticsPage(container);
+
+  void updateAllColors();
 }
